@@ -29,17 +29,24 @@ class CureAiEnv(
         >>> # Connect to a running server
         >>> with CureAiEnv(base_url="http://localhost:8000") as client:
         ...     result = client.reset()
-        ...     print(result.observation.echoed_message)
+        ...     print(result.observation.description)
         ...
-        ...     result = client.step(CureAiAction(message="Hello!"))
-        ...     print(result.observation.echoed_message)
+        ...     result = client.step(
+        ...         CureAiAction(
+        ...             analysis="Likely DB pool exhaustion due to high concurrency.",
+        ...             fix="Increase pool limits safely and add exponential backoff.",
+        ...             root_cause="db_pool",
+        ...             done=True,
+        ...         )
+        ...     )
+        ...     print(result.reward)
 
     Example with Docker:
         >>> # Automatically start container and connect
         >>> client = CureAiEnv.from_docker_image("cure_ai-env:latest")
         >>> try:
         ...     result = client.reset()
-        ...     result = client.step(CureAiAction(message="Test"))
+        ...     result = client.step(CureAiAction(analysis="Inspect logs", fix="Collect metrics"))
         ... finally:
         ...     client.close()
     """

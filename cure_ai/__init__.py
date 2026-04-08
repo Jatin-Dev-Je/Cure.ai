@@ -7,10 +7,12 @@
 """Cure Ai Environment."""
 
 from .client import CureAiEnv
-from .models import CureAiAction, CureAiObservation
+from .models import CureAiAction, CureAiObservation, CureAiReward, CureAiState
 
 __all__ = [
     "CureAiAction",
     "CureAiObservation",
+    "CureAiReward",
+    "CureAiState",
     "CureAiEnv",
 ]

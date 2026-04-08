@@ -79,6 +79,17 @@ On each `step(action)`, the environment:
 
 This produces **dense, step‑wise feedback**, not just a terminal score.
 
+The environment implements the full API contract expected by OpenEnv:
+- `reset()` returns the first observation of the episode.
+- `step(action)` returns `(observation, reward, done, info)`.
+- `state()` returns current task id, step counters, and reward totals.
+
+Task sequencing is deterministic for reproducibility:
+- Episode 1: `task_easy`
+- Episode 2: `task_medium`
+- Episode 3: `task_hard`
+- Then repeats.
+
 ### Quick Start (Local)
 
 Install dependencies and run the server locally:
@@ -140,11 +151,33 @@ The file `inference.py` provides a **baseline agent** using the OpenAI Python SD
   - Reset the environment.
   - Run up to `max_steps` per episode.
   - Call the model each step to generate `analysis`, `fix`, `root_cause`, `done`.
-  - Accumulate rewards across **easy**, **medium**, and **hard** tasks.
+  - Accumulate rewards across **easy**, **medium**, and **hard** tasks in deterministic order.
+- Emits structured logs for evaluators:
+  - `[START] run_id=... task_id=... model=... max_steps=...`
+  - `[STEP] run_id=... task_id=... step=... reward=... cumulative_reward=... done=... root_cause=...`
+  - `[END] run_id=... task_id=... total_reward=... steps=... done=...`
 - Writes a `results.json` file with:
   - Per‑task total rewards and steps.
   - Overall mean reward.
   - Model name and configuration.
+
+### Baseline Performance (Local Reproducible)
+
+You can run a deterministic local baseline without external LLM calls:
+
+```bash
+cd cure_ai
+BASELINE_AGENT_MODE=heuristic ENV_BASE_URL=http://localhost:8000 python inference.py
+```
+
+This mode is for local reproducibility and smoke testing only.
+For hackathon submission, keep `BASELINE_AGENT_MODE` unset and provide `API_BASE_URL`, `MODEL_NAME`, and `HF_TOKEN`.
+
+Latest local run (`run_id=20260408105351`) produced:
+- `task_easy`: total_reward `3.6856`, steps `5`
+- `task_medium`: total_reward `3.6856`, steps `5`
+- `task_hard`: total_reward `2.4571`, steps `5`
+- mean_reward: `3.2761`
 
 This script serves as the **reproducible baseline** for hackathon evaluation.
 
