@@ -1,6 +1,9 @@
 from openenv.core.env_server import create_app
 
-from ..models import CureAiAction, CureAiObservation
+try:
+    from ..models import CureAiAction, CureAiObservation
+except ImportError:  # pragma: no cover
+    from models import CureAiAction, CureAiObservation
 from .cure_ai_environment import CureAiEnvironment
 
 

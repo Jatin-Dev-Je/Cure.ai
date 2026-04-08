@@ -18,6 +18,9 @@ dist/
 .mypy_cache/
 .ruff_cache/
 
+# Generated baseline outputs
+cure_ai/results.json
+
 # OS/editor artifacts
 .DS_Store
 Thumbs.db

@@ -5,7 +5,10 @@ from typing import Dict, Tuple
 from openenv.core.env_server.interfaces import Environment
 from openenv.core.env_server.types import State
 
-from ..models import CureAiAction, CureAiObservation
+try:
+    from ..models import CureAiAction, CureAiObservation
+except ImportError:  # pragma: no cover
+    from models import CureAiAction, CureAiObservation
 
 
 @dataclass

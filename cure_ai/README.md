@@ -153,9 +153,9 @@ The file `inference.py` provides a **baseline agent** using the OpenAI Python SD
   - Call the model each step to generate `analysis`, `fix`, `root_cause`, `done`.
   - Accumulate rewards across **easy**, **medium**, and **hard** tasks in deterministic order.
 - Emits structured logs for evaluators:
-  - `[START] run_id=... task_id=... model=... max_steps=...`
-  - `[STEP] run_id=... task_id=... step=... reward=... cumulative_reward=... done=... root_cause=...`
-  - `[END] run_id=... task_id=... total_reward=... steps=... done=...`
+  - `[START] task_id=... model=... max_steps=...`
+  - `[STEP] task_id=... step=... reward=... done=... root_cause=...`
+  - `[END] task_id=... total_reward=... steps=... done=...`
 - Writes a `results.json` file with:
   - Per‑task total rewards and steps.
   - Overall mean reward.

@@ -135,41 +135,29 @@ def _heuristic_step(task_id: str, step: int) -> CureAiAction:
     )
 
 
-def _emit_start(run_id: str, task_id: str, model: str, max_steps: int) -> None:
+def _emit_start(task_id: str, model: str, max_steps: int) -> None:
     print(
         "[START] "
-        f"run_id={run_id} "
         f"task_id={task_id} "
         f"model={model} "
         f"max_steps={max_steps}"
     )
 
 
-def _emit_step(
-    run_id: str,
-    task_id: str,
-    step: int,
-    reward: float,
-    cumulative_reward: float,
-    done: bool,
-    root_cause: str,
-) -> None:
+def _emit_step(task_id: str, step: int, reward: float, done: bool, root_cause: str) -> None:
     print(
         "[STEP] "
-        f"run_id={run_id} "
         f"task_id={task_id} "
         f"step={step} "
         f"reward={reward:.4f} "
-        f"cumulative_reward={cumulative_reward:.4f} "
         f"done={str(done).lower()} "
         f"root_cause={root_cause}"
     )
 
 
-def _emit_end(run_id: str, task_id: str, total_reward: float, steps: int, done: bool) -> None:
+def _emit_end(task_id: str, total_reward: float, steps: int, done: bool) -> None:
     print(
         "[END] "
-        f"run_id={run_id} "
         f"task_id={task_id} "
         f"total_reward={total_reward:.4f} "
         f"steps={steps} "
@@ -196,7 +184,7 @@ def main() -> None:
 
             obs = reset_result.observation
             total_reward = 0.0
-            _emit_start(run_id=run_id, task_id=task_id, model=config["model"], max_steps=obs.max_steps)
+            _emit_start(task_id=task_id, model=config["model"], max_steps=obs.max_steps)
 
             for _step in range(obs.max_steps):
                 if config["agent_mode"] == "heuristic":
@@ -212,11 +200,9 @@ def main() -> None:
                 total_reward += reward
 
                 _emit_step(
-                    run_id=run_id,
                     task_id=task_id,
                     step=obs.step,
                     reward=reward,
-                    cumulative_reward=total_reward,
                     done=obs.done,
                     root_cause=(action.root_cause or "na"),
                 )
@@ -224,7 +210,7 @@ def main() -> None:
                 if obs.done:
                     break
 
-            _emit_end(run_id=run_id, task_id=task_id, total_reward=total_reward, steps=obs.step, done=obs.done)
+            _emit_end(task_id=task_id, total_reward=total_reward, steps=obs.step, done=obs.done)
             results.append({"task_id": task_id, "total_reward": total_reward, "steps": obs.step})
 
     summary = {
