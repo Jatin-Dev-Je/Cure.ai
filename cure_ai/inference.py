@@ -126,6 +126,10 @@ def _emit_end(task_id: str, total_reward: float, steps: int, done: bool) -> None
     )
 
 
+def _clamp01(value: float) -> float:
+    return max(0.0, min(1.0, value))
+
+
 def main() -> None:
     config = _load_env_config()
     client = _build_client(config["api_base"], config["hf_token"])
@@ -143,6 +147,7 @@ def main() -> None:
 
             obs = reset_result.observation
             total_reward = 0.0
+            max_total_reward = float(obs.max_steps)
             _emit_start(task_id=task_id, model=config["model"], max_steps=obs.max_steps)
 
             for _step in range(obs.max_steps):
@@ -165,13 +170,22 @@ def main() -> None:
                     break
 
             _emit_end(task_id=task_id, total_reward=total_reward, steps=obs.step, done=obs.done)
-            results.append({"task_id": task_id, "total_reward": total_reward, "steps": obs.step})
+            score = _clamp01(total_reward / max_total_reward) if max_total_reward > 0 else 0.0
+            results.append(
+                {
+                    "task_id": task_id,
+                    "total_reward": total_reward,
+                    "score": score,
+                    "steps": obs.step,
+                }
+            )
 
     summary = {
         "run_id": run_id,
         "model": config["model"],
         "episodes": results,
         "mean_reward": sum(r["total_reward"] for r in results) / len(results),
+        "mean_score": sum(r["score"] for r in results) / len(results),
     }
 
     results_path = Path(__file__).resolve().parent / "results.json"
