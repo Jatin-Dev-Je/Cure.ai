@@ -3,7 +3,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List, Tuple
 
 from openai import OpenAI
 
@@ -18,23 +18,61 @@ except ImportError:  # pragma: no cover
 
 def _load_env_config() -> Dict[str, str]:
     # Keep defaults only for API_BASE_URL and MODEL_NAME per checklist.
-    api_base = os.environ.get("API_BASE_URL", "https://router.huggingface.co/v1")
-    model = os.environ.get("MODEL_NAME", "meta-llama/Llama-3.1-8B-Instruct")
-    hf_token = os.environ.get("HF_TOKEN")
-    if not hf_token:
+    API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+    MODEL_NAME = os.getenv("MODEL_NAME", "meta-llama/Llama-3.1-8B-Instruct")
+    HF_TOKEN = os.getenv("HF_TOKEN")
+    # Optional variable for from_docker_image() workflows.
+    LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
+
+    if not HF_TOKEN:
         missing: List[str] = []
-        if not hf_token:
+        if not HF_TOKEN:
             missing.append("HF_TOKEN")
         raise RuntimeError(f"Missing required environment variables: {', '.join(missing)}")
+
+    del LOCAL_IMAGE_NAME  # Parsed for checklist compatibility; not used in this script path.
+
     return {
-        "api_base": api_base,
-        "model": model,
-        "hf_token": hf_token,
+        "api_base": API_BASE_URL,
+        "model": MODEL_NAME,
+        "hf_token": HF_TOKEN,
     }
 
 
 def _build_client(api_base: str, hf_token: str) -> OpenAI:
-    return OpenAI(base_url=api_base, api_key=hf_token)
+    # Keep retries/timeouts bounded for predictable benchmark runtime.
+    return OpenAI(base_url=api_base, api_key=hf_token, max_retries=2, timeout=30.0)
+
+
+def _extract_json_payload(content: str) -> Dict[str, Any]:
+    text = (content or "{}").strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        if text.startswith("json"):
+            text = text[4:].strip()
+
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, dict):
+            return parsed
+    except json.JSONDecodeError:
+        pass
+
+    return {
+        "analysis": text,
+        "fix": "",
+        "root_cause": "",
+        "done": False,
+    }
+
+
+def _normalize_action_fields(parsed: Dict[str, Any]) -> Tuple[str, str, str, bool]:
+    # Guard rails to avoid accidentally huge payloads from model output.
+    analysis = str(parsed.get("analysis", ""))[:1200]
+    fix = str(parsed.get("fix", ""))[:1200]
+    root_cause = str(parsed.get("root_cause", ""))[:120]
+    done = bool(parsed.get("done", False))
+    return analysis, fix, root_cause, done
 
 
 def _llm_step(
@@ -71,28 +109,15 @@ def _llm_step(
     )
 
     content = response.choices[0].message.content or "{}"
-    content = content.strip()
-    if content.startswith("```"):
-        content = content.strip("`")
-        if content.startswith("json"):
-            content = content[4:].strip()
-
-    try:
-        parsed = json.loads(content)
-    except json.JSONDecodeError:
-        parsed = {
-            "analysis": content,
-            "fix": "",
-            "root_cause": "",
-            "done": False,
-        }
+    parsed = _extract_json_payload(content)
+    analysis, fix, root_cause, done = _normalize_action_fields(parsed)
 
     return CureAiAction(
         task_id=task_id,
-        analysis=str(parsed.get("analysis", "")),
-        fix=str(parsed.get("fix", "")),
-        root_cause=str(parsed.get("root_cause", "")),
-        done=bool(parsed.get("done", False)),
+        analysis=analysis,
+        fix=fix,
+        root_cause=root_cause,
+        done=done,
     )
 
 
@@ -151,7 +176,12 @@ def main() -> None:
             _emit_start(task_id=task_id, model=config["model"], max_steps=obs.max_steps)
 
             for _step in range(obs.max_steps):
-                action = _llm_step(client, config["model"], task_id, obs)
+                try:
+                    action = _llm_step(client, config["model"], task_id, obs)
+                except Exception as e:
+                    # Keep run alive and emit a traceable step line for evaluator logs.
+                    print(f"[WARN] llm_call_failed task_id={task_id} step={obs.step + 1} error={e}", file=sys.stderr)
+                    action = CureAiAction(task_id=task_id, analysis="", fix="", root_cause="", done=False)
 
                 step_result = env.step(action)
                 obs = step_result.observation
@@ -194,4 +224,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(f"[ERROR] inference_failed error={e}", file=sys.stderr)
+        sys.exit(1)
