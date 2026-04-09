@@ -65,14 +65,12 @@ def _strict_open01(value: float) -> float:
 
 
 def _max_episode_reward_upper_bound(max_steps: int) -> float:
-    # Sum_{i=0..n-1} 0.9^i = (1 - 0.9^n) / (1 - 0.9)
-    return (1.0 - (0.9 ** max_steps)) / 0.1
+    # Hard upper bound on cumulative reward across max_steps actions.
+    # This remains safe even if request/session state is not preserved.
+    return float(max_steps)
 
 
 def _grade_action(task_id: str, action: CureAiAction, step_count: int) -> Tuple[float, str]:
-    """
-    Deterministic task grader returning per-step raw reward in (0,1) and feedback text.
-    """
     analysis = (action.analysis or "").lower()
     fix = (action.fix or "").lower()
     root_cause = (action.root_cause or "").lower()
@@ -169,7 +167,6 @@ class CureAiEnvironment(Environment):
         self._state = State(episode_id=self._state.episode_id or "", step_count=self._state.step_count + 1)
         raw_reward, feedback = _grade_action(self._task_id, action, self._state.step_count)
 
-        # Normalize so cumulative episode score is guaranteed to remain in (0, 1).
         upper_bound = _max_episode_reward_upper_bound(self._max_steps) + EPSILON_SCORE
         reward = _strict_open01(raw_reward / upper_bound)
 
