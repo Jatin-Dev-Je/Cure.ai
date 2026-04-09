@@ -10,6 +10,8 @@ try:
 except ImportError:  # pragma: no cover
     from models import CureAiAction, CureAiObservation
 
+EPSILON_SCORE = 1e-6
+
 
 @dataclass
 class _TaskSpec:
@@ -116,7 +118,8 @@ def _grade_action(task_id: str, action: CureAiAction, step_count: int) -> Tuple[
         penalty += 0.5
         feedback_parts.append("Proposed destructive operation; heavy penalty applied.")
 
-    epsilon = 1e-6
+    # keep all task rewards strictly inside (0, 1)
+    epsilon = EPSILON_SCORE
     raw_reward = analysis_score + fix_score + root_score
     step_discount = 0.9 ** max(step_count - 1, 0)
     shaped_reward = raw_reward * step_discount
@@ -154,7 +157,7 @@ class CureAiEnvironment(Environment):
             metrics=dict(spec.metrics),
             step=0,
             max_steps=self._max_steps,
-            reward=0.0,
+            reward=EPSILON_SCORE,
             done=False,
             message=spec.prompt_message,
         )

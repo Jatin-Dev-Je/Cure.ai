@@ -16,9 +16,9 @@ class CureAiReward(BaseModel):
     analysis_score: float = Field(default=1e-6, gt=0.0, lt=1.0)
     fix_score: float = Field(default=1e-6, gt=0.0, lt=1.0)
     root_cause_score: float = Field(default=1e-6, gt=0.0, lt=1.0)
-    step_discount: float = Field(default=1.0, ge=0.0, le=1.0)
-    unsafe_penalty: float = Field(default=0.0, ge=0.0, le=1.0)
-    loop_penalty: float = Field(default=0.0, ge=0.0, le=1.0)
+    step_discount: float = Field(default=1.0 - 1e-6, gt=0.0, lt=1.0)
+    unsafe_penalty: float = Field(default=1e-6, gt=0.0, lt=1.0)
+    loop_penalty: float = Field(default=1e-6, gt=0.0, lt=1.0)
     total: float = Field(default=1e-6, gt=0.0, lt=1.0)
 
 
@@ -38,7 +38,7 @@ class CureAiObservation(Observation):
     metrics: Dict[str, float] = Field(default_factory=dict)
     step: int = Field(default=0)
     max_steps: int = Field(default=5)
-    reward: float = Field(default=0.0)
+    reward: float = Field(default=1e-6, gt=0.0, lt=1.0)
     done: bool = Field(default=False)
     message: str = Field(default="")
     reward_breakdown: Dict[str, float] = Field(default_factory=dict)
