@@ -135,17 +135,18 @@ def _emit_step(task_id: str, step: int, reward: float, done: bool, root_cause: s
         "[STEP] "
         f"task_id={task_id} "
         f"step={step} "
-        f"reward={reward:.4f} "
+        f"reward={reward:.6f} "
         f"done={str(done).lower()} "
         f"root_cause={root_cause}"
     )
 
 
-def _emit_end(task_id: str, total_reward: float, steps: int, done: bool) -> None:
+def _emit_end(task_id: str, total_reward: float, score: float, steps: int, done: bool) -> None:
     print(
         "[END] "
         f"task_id={task_id} "
-        f"total_reward={total_reward:.4f} "
+        f"total_reward={total_reward:.6f} "
+        f"task_score={score:.6f} "
         f"steps={steps} "
         f"done={str(done).lower()}"
     )
@@ -203,14 +204,17 @@ def main() -> None:
                 if obs.done:
                     break
 
-            _emit_end(task_id=task_id, total_reward=total_reward, steps=obs.step, done=obs.done)
             raw_score = _clamp01(total_reward / max_total_reward) if max_total_reward > 0 else 0.0
             score = _strict_open01(raw_score)
+            _emit_end(task_id=task_id, total_reward=total_reward, score=score, steps=obs.step, done=obs.done)
             results.append(
                 {
                     "task_id": task_id,
-                    "total_reward": total_reward,
+                    # Keep score-like task fields strictly open interval for validators.
+                    "total_reward": score,
+                    "raw_total_reward": total_reward,
                     "score": score,
+                    "task_score": score,
                     "steps": obs.step,
                 }
             )
@@ -219,7 +223,7 @@ def main() -> None:
         "run_id": run_id,
         "model": config["model"],
         "episodes": results,
-        "mean_reward": sum(r["total_reward"] for r in results) / len(results),
+        "mean_reward": sum(r["raw_total_reward"] for r in results) / len(results),
         "mean_score": sum(r["score"] for r in results) / len(results),
     }
 
