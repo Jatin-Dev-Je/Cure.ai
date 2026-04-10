@@ -182,6 +182,16 @@ class CureAiEnvironment(Environment):
             reward=EPSILON_SCORE,
             done=False,
             message=spec.prompt_message,
+            reward_breakdown={
+                "analysis_score": EPSILON_SCORE,
+                "fix_score": EPSILON_SCORE,
+                "root_cause_score": EPSILON_SCORE,
+                "step_discount": 1.0 - EPSILON_SCORE,
+                "unsafe_penalty": EPSILON_SCORE,
+                "loop_penalty": EPSILON_SCORE,
+                "total": EPSILON_SCORE,
+                "task_score": EPSILON_SCORE,
+            },
         )
 
     def step(self, action: CureAiAction) -> CureAiObservation:
@@ -204,6 +214,16 @@ class CureAiEnvironment(Environment):
             reward=reward,
             done=done,
             message=feedback,
+            reward_breakdown={
+                "analysis_score": reward,
+                "fix_score": reward,
+                "root_cause_score": reward,
+                "step_discount": 1.0 - EPSILON_SCORE,
+                "unsafe_penalty": EPSILON_SCORE,
+                "loop_penalty": EPSILON_SCORE,
+                "total": reward,
+                "task_score": reward,
+            },
         )
 
     @property
