@@ -167,7 +167,6 @@ class CureAiEnvironment(Environment):
         self._task_cycle = ["task_easy", "task_medium", "task_hard"]
         self._task_id = self._task_cycle[0]
         self._episode_done = False
-        self._post_done_calls = 0
 
     def reset(self) -> CureAiObservation:
         task_idx = _next_task_index()
@@ -175,7 +174,6 @@ class CureAiEnvironment(Environment):
         spec = TASK_SPECS[self._task_id]
         self._state = State(episode_id=str(uuid4()), step_count=0)
         self._episode_done = False
-        self._post_done_calls = 0
 
         return CureAiObservation(
             task_id=spec.task_id,
@@ -204,11 +202,10 @@ class CureAiEnvironment(Environment):
         spec = TASK_SPECS[self._task_id]
 
         # Some validators may continue stepping after done=True.
-        # Return exponentially decaying positive rewards after done so
-        # cumulative reward remains strictly bounded even with extra calls.
+        # Keep post-done rewards strictly inside (0,1) and stable so
+        # validators cannot interpret late-step rewards as 0.0.
         if self._episode_done:
-            self._post_done_calls += 1
-            tail_reward = EPSILON_SCORE / (2 ** self._post_done_calls)
+            tail_reward = EPSILON_SCORE
             return CureAiObservation(
                 task_id=spec.task_id,
                 description=spec.description,
