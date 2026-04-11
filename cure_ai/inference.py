@@ -196,8 +196,9 @@ def main() -> None:
                 _emit_start(task_name=task_id_for_logs, benchmark=benchmark, model=config["model"])
 
                 obs = reset_result.observation
+                max_steps = int(obs.max_steps)
 
-                for _step in range(obs.max_steps):
+                for _step in range(max_steps):
                     try:
                         action = _llm_step(client, config["model"], observed_task_id, obs)
                     except Exception as e:
@@ -209,8 +210,12 @@ def main() -> None:
                     obs = step_result.observation
                     reward = _validator_safe_step_reward(float(step_result.reward or 0.0))
                     rewards.append(reward)
-                    task_steps = int(obs.step)
-                    task_done = bool(obs.done)
+                    task_steps = _step + 1
+                    task_done = bool(
+                        getattr(step_result, "done", False)
+                        or getattr(obs, "done", False)
+                        or task_steps >= max_steps
+                    )
                     step_error = getattr(obs, "last_action_error", None)
 
                     _emit_step(
@@ -232,6 +237,9 @@ def main() -> None:
                     rewards = [0.10]
                 if task_steps <= 0:
                     task_steps = len(rewards)
+                if task_steps >= 1 and task_steps >= len(rewards):
+                    # Mark episode complete when local rollout budget is consumed.
+                    task_done = True
                 if task_id_for_logs == "unknown":
                     _emit_start(task_name=task_id_for_logs, benchmark=benchmark, model=config["model"])
                 _emit_end(success=True, steps=task_steps, rewards=rewards)
