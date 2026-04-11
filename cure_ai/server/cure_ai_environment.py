@@ -1,5 +1,7 @@
 from dataclasses import dataclass
+from pathlib import Path
 from threading import Lock
+import tempfile
 from typing import Dict, Tuple
 from uuid import uuid4
 
@@ -146,6 +148,7 @@ class CureAiEnvironment(Environment):
     # Keep task rotation process-global so sequential resets still cover all tasks.
     _reset_lock = Lock()
     _global_reset_counter = 0
+    _counter_file = Path(tempfile.gettempdir()) / "cure_ai_task_counter.txt"
 
     def __init__(self, max_steps: int = 5):
         self._max_steps = max_steps
@@ -155,10 +158,25 @@ class CureAiEnvironment(Environment):
         self._task_idx = 0
         self._episode_done = False
 
-    def reset(self) -> CureAiObservation:
+    def _next_task_index(self) -> int:
         with self._reset_lock:
-            self._task_idx = self._global_reset_counter % len(self._task_cycle)
-            self.__class__._global_reset_counter += 1
+            try:
+                raw = self._counter_file.read_text(encoding="utf-8").strip()
+                counter = int(raw) if raw else 0
+            except Exception:
+                counter = self._global_reset_counter
+
+            idx = counter % len(self._task_cycle)
+
+            try:
+                self._counter_file.write_text(str(counter + 1), encoding="utf-8")
+            except Exception:
+                self.__class__._global_reset_counter = counter + 1
+
+            return idx
+
+    def reset(self) -> CureAiObservation:
+        self._task_idx = self._next_task_index()
         self._task_id = self._task_cycle[self._task_idx]
         spec = TASK_SPECS[self._task_id]
         self._state = State(episode_id=str(uuid4()), step_count=0)
