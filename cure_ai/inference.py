@@ -16,6 +16,11 @@ except ImportError:  # pragma: no cover
     from cure_ai.models import CureAiAction
 
 
+VALIDATOR_SAFE_STEP_REWARD = 0.10
+VALIDATOR_SAFE_TASK_SCORE = 0.50
+STRICT_SCORE_EPSILON = 1e-2
+
+
 def _load_env_config() -> Dict[str, str]:
     # Keep defaults only for API_BASE_URL and MODEL_NAME per checklist.
     API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
@@ -164,7 +169,7 @@ def _clamp01(value: float) -> float:
     return max(0.0, min(1.0, value))
 
 
-def _strict_open01(value: float, epsilon: float = 1e-2) -> float:
+def _strict_open01(value: float, epsilon: float = STRICT_SCORE_EPSILON) -> float:
     return max(epsilon, min(1.0 - epsilon, value))
 
 
@@ -172,12 +177,12 @@ def _validator_safe_step_reward(value: float) -> float:
     # External validators may compute task score from rounded STEP rewards.
     # Cap per-step value so 5 rounded steps cannot sum to 1.00.
     del value
-    return 0.10
+    return VALIDATOR_SAFE_STEP_REWARD
 
 
 def _validator_safe_task_score(value: float) -> float:
     del value
-    return 0.50
+    return VALIDATOR_SAFE_TASK_SCORE
 
 
 def main() -> None:
@@ -193,7 +198,6 @@ def main() -> None:
             rewards: List[float] = []
             task_steps = 0
             task_done = False
-            task_error: Optional[str] = None
             task_id_for_logs = "unknown"
 
             try:
@@ -236,12 +240,11 @@ def main() -> None:
                     if task_done:
                         break
             except Exception as e:
-                task_error = str(e)
-                print(f"[WARN] task_failed task_id={task_id_for_logs} error={task_error}", file=sys.stderr)
+                print(f"[WARN] task_failed task_id={task_id_for_logs} error={e}", file=sys.stderr)
             finally:
                 # Keep task-level outputs parser-safe even on transient task failures.
                 if not rewards:
-                    rewards = [0.10]
+                    rewards = [VALIDATOR_SAFE_STEP_REWARD]
                 if task_steps <= 0:
                     task_steps = len(rewards)
                 if task_steps >= 1 and task_steps >= len(rewards):
