@@ -152,15 +152,16 @@ The file `inference.py` provides a **baseline agent** using the OpenAI Python SD
   - Call the model each step to generate `analysis`, `fix`, `root_cause`, `done`.
   - Accumulate rewards across **easy**, **medium**, and **hard** tasks in deterministic order.
 - Emits structured logs for evaluators:
-  - `[START] task_id=... model=... max_steps=...`
-  - `[STEP] task_id=... step=... reward=... done=... root_cause=...`
-  - `[END] task_id=... total_reward=... steps=... done=...`
+  - `[START] task=... env=... model=...`
+  - `[STEP] step=... action=analysis=...;fix=...;root_cause=...;done=... reward=... done=... error=...`
+  - `[END] task_id=... success=... steps=... score=... rewards=...`
 - Writes a `results.json` file with:
-  - Per'task total rewards and steps.
-  - Overall mean reward.
+  - Per-task `score`/`task_score` in strict `(0, 1)`.
+  - Per-task steps and done status.
+  - Overall mean score and mean reward.
   - Model name and configuration.
 
-### Baseline Performance (Local Reproducible)
+### Baseline Output Contract
 
 Run baseline inference with the OpenAI client configured via required variables:
 
@@ -175,13 +176,13 @@ python inference.py
 
 `HF_TOKEN` is mandatory. `API_BASE_URL` and `MODEL_NAME` have defaults in `inference.py`, but you can override them explicitly.
 
-Latest local run (`run_id=20260408105351`) produced:
-- `task_easy`: total_reward `3.6856`, steps `5`
-- `task_medium`: total_reward `3.6856`, steps `5`
-- `task_hard`: total_reward `2.4571`, steps `5`
-- mean_reward: `3.2761`
+The baseline inference output is designed to be parser-safe and validator-safe:
+- Every task emits an explicit END line with `task_id` and `score`.
+- Every task score is kept strictly in `(0, 1)`.
+- Rewards logged in STEP/END output remain strictly in `(0, 1)`.
+- The script still runs 3 deterministic episodes across easy/medium/hard tasks.
 
-This script serves as the **reproducible baseline** for hackathon evaluation.
+This script serves as the reproducible baseline for hackathon evaluation and deployment checks.
 
 ### Project Structure
 
