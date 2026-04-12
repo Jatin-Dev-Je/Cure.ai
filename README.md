@@ -12,6 +12,12 @@ This repository contains the Cure AI OpenEnv project and deployment assets for h
 - Hugging Face Space: https://huggingface.co/spaces/RocktheDev/cure_ai
 - GitHub Repository: https://github.com/Jatin-Dev-Je/cure-ai-openenv
 
+## Judging Assets
+
+- Rubric Mapping: docs/RUBRIC_MAPPING.md
+- Demo Script (5-7 min): docs/DEMO_SCRIPT.md
+- Pre-Submit Checklist: docs/JUDGING_CHECKLIST.md
+
 ## Local Setup
 
 ```bash
